@@ -1,12 +1,33 @@
-# File Search API
+# File Search & Copy Tool
 
-A lightweight file search API that can be deployed to Vercel.
+A web-based tool to search for files by name and copy them to a destination folder.
 
 ## Features
 
 - Search for files by name in any directory
+- Copy found files to a specified destination folder
+- Web-based interface for easy use
 - RESTful API for programmatic access
-- Lightweight deployment package
+
+## Local Development
+
+1. Create a virtual environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the application:
+   ```bash
+   python api.py
+   ```
+
+4. Open your browser to http://localhost:3000
 
 ## API Endpoints
 
@@ -15,38 +36,39 @@ A lightweight file search API that can be deployed to Vercel.
 GET /search?filename={filename}&directory={directory}
 ```
 
-### Health check
+### Copy files
 ```
-GET /health
+POST /copy
+{
+  "file_paths": ["path/to/file1", "path/to/file2"],
+  "destination_folder": "destination_folder_name"
+}
 ```
-
-## Local Development
-
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Run the application:
-   ```bash
-   python api.py
-   ```
-
-3. Open your browser to http://localhost:3000
 
 ## Deploying to Vercel
 
-1. Create a new project in Vercel
-2. Connect your Git repository
-3. Import the `vercel-deploy` folder
-4. Set the build command to `pip install -r requirements.txt`
-5. Set the output directory to `.`
-6. Deploy!
+1. Install the Vercel CLI:
+   ```bash
+   npm install -g vercel
+   ```
+
+2. Login to your Vercel account:
+   ```bash
+   vercel login
+   ```
+
+3. Deploy the project:
+   ```bash
+   vercel
+   ```
+
+4. Follow the prompts to deploy to Vercel
 
 ## Project Structure
 
 - `api.py` - Main Flask application with API endpoints
 - `filesearch.py` - Core file search functionality
+- `index.html` - Frontend interface
 - `requirements.txt` - Python dependencies
 - `vercel.json` - Vercel deployment configuration
 
