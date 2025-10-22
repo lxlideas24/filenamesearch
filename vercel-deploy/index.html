@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Search & Copy Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .file-list li {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 File Search & Copy Tool</h1>
+        
+        <div class="form-group">
+            <label for="filenames">Filenames (one per line):</label>
+            <textarea id="filenames" rows="5" placeholder="Enter filenames, one per line&#10;example.txt&#10;document.pdf&#10;image.jpg"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="searchDir">Search Directory:</label>
+            <input type="text" id="searchDir" value="." placeholder="Directory to search in">
+        </div>
+        
+        <div class="form-group">
+            <label for="destDir">Destination Directory:</label>
+            <input type="text" id="destDir" value="copied_files" placeholder="Directory to copy files to">
+        </div>
+        
+        <button id="searchBtn">🔍 Search Files</button>
+        <button id="copyBtn" style="background-color: #28a745; margin-left: 10px;" disabled>📋 Copy Files</button>
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>Results</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let foundFiles = [];
+
+        document.getElementById('searchBtn').addEventListener('click', searchFiles);
+        document.getElementById('copyBtn').addEventListener('click', copyFiles);
+
+        async function searchFiles() {
+            const filenames = document.getElementById('filenames').value.trim();
+            const searchDir = document.getElementById('searchDir').value || '.';
+            
+            if (!filenames) {
+                alert('Please enter at least one filename');
+                return;
+            }
+            
+            const filenameList = filenames.split('\n').filter(name => name.trim());
+            foundFiles = [];
+            
+            let resultsHTML = '<h4>Search Results:</h4>';
+            let allFiles = [];
+            
+            for (const filename of filenameList) {
+                try {
+                    const response = await fetch(`/search?filename=${encodeURIComponent(filename)}&directory=${encodeURIComponent(searchDir)}`);
+                    const data = await response.json();
+                    
+                    if (data.files && data.files.length > 0) {
+                        resultsHTML += `<p class="success">Found ${data.files.length} match(es) for "${filename}":</p>`;
+                        data.files.forEach(file => {
+                            if (!file.error) {
+                                foundFiles.push(file.path);
+                                allFiles.push(file);
+                                resultsHTML += `<div style="margin-left: 20px;">• ${file.name} (${file.size} bytes)</div>`;
+                            } else {
+                                resultsHTML += `<div style="margin-left: 20px;" class="error">• ${file.name} - Error: ${file.error}</div>`;
+                            }
+                        });
+                    } else {
+                        resultsHTML += `<p class="error">No matches found for "${filename}"</p>`;
+                    }
+                } catch (error) {
+                    resultsHTML += `<p class="error">Error searching for "${filename}": ${error.message}</p>`;
+                }
+            }
+            
+            document.getElementById('resultContent').innerHTML = resultsHTML;
+            document.getElementById('results').style.display = 'block';
+            
+            if (foundFiles.length > 0) {
+                document.getElementById('copyBtn').disabled = false;
+            } else {
+                document.getElementById('copyBtn').disabled = true;
+            }
+        }
+
+        async function copyFiles() {
+            const destDir = document.getElementById('destDir').value || 'copied_files';
+            
+            if (foundFiles.length === 0) {
+                alert('No files to copy');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/copy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_paths: foundFiles,
+                        destination_folder: destDir
+                    })
+                });
+                
+                const data = await response.json();
+                
+                let resultHTML = '<h4>Copy Results:</h4>';
+                
+                if (data.copied && data.copied.length > 0) {
+                    resultHTML += `<p class="success">Successfully copied ${data.copied.length} file(s) to ${data.destination}:</p>`;
+                    data.copied.forEach(file => {
+                        resultHTML += `<div style="margin-left: 20px;">• ${file}</div>`;
+                    });
+                }
+                
+                if (data.failed && data.failed.length > 0) {
+                    resultHTML += `<p class="error">Failed to copy ${data.failed.length} file(s):</p>`;
+                    data.failed.forEach(item => {
+                        resultHTML += `<div style="margin-left: 20px;" class="error">• ${item.file}: ${item.error}</div>`;
+                    });
+                }
+                
+                document.getElementById('resultContent').innerHTML += resultHTML;
+            } catch (error) {
+                document.getElementById('resultContent').innerHTML += `<p class="error">Error copying files: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
